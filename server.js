@@ -23,12 +23,24 @@
  */
 
 require('dotenv').config();
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { google } = require('googleapis');
 
 const app = express();
+app.set('trust proxy', true); // Render terminates TLS upstream; trust x-forwarded-proto
 app.use(express.json({ limit: '2mb' }));
+
+// Serve the landing page with the correct absolute origin baked into the Open
+// Graph tags, so WhatsApp/social link previews show the right image on ANY
+// domain (localhost, *.onrender.com, or a custom domain) with no hardcoding.
+const INDEX_HTML = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+app.get(['/', '/index.html'], (req, res) => {
+  const origin = req.protocol + '://' + req.get('host');
+  res.type('html').send(INDEX_HTML.replace(/__ORIGIN__/g, origin));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const CACHE_SECONDS = 300; // 5 min server cache for the data snapshot
