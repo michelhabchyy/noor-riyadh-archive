@@ -505,7 +505,7 @@ function render(){
    '<div id="partnerStrip" class="pstrip" style="display:none"><div class="pstrip-label">Partners &amp; sponsors</div><div class="pstrip-viewport"><div class="pstrip-track" id="pstripTrack"></div></div></div>'+
    tabsHtml()+'<div id="gal"></div>';
   document.getElementById('app').innerHTML=html;
-  document.getElementById('foot').textContent='Live from Google Sheets · '+new Date(DATA.generatedAt).toLocaleString();
+  document.getElementById('foot').textContent='Live from archived data · '+new Date(DATA.generatedAt).toLocaleString();
   requestAnimationFrame(function(){
     document.querySelectorAll('.bar .col').forEach(function(c){
       var i=parseInt(c.getAttribute('data-i')||'0',10);
