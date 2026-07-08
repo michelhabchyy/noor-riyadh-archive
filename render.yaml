@@ -1,0 +1,19 @@
+# Render Blueprint — lets Render configure the service automatically.
+# Secrets use sync:false, so Render prompts you for them (they are NEVER in git).
+services:
+  - type: web
+    name: noor-riyadh-archive
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: SHEET_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
