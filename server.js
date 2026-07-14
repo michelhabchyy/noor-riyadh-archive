@@ -63,6 +63,9 @@ const SHEETS = {
   collateral: 'Collateral_and_festival_designs',
   videos:     'Videos',
   partners:   'Partnership_and_sponsorship',
+  employees:  'Employees',
+  saudiEmp:   'Saudi_Employees',
+  suppliers:  'Supplier_List',
   venueList:  'loaction dropdown',
   legend:     'Sheet16'
 };
@@ -364,7 +367,7 @@ async function coversFor(requestJson) {
 /* ---------- Public API: the data snapshot ---------- */
 
 async function getDataString() {
-  const hit = cacheGet('snapshot_v3');
+  const hit = cacheGet('snapshot_v4');
   if (hit) return hit;
 
   const grids = await readAllGrids();
@@ -468,6 +471,33 @@ async function getDataString() {
     desc: (l.Description || '').toString().trim()
   })).filter(l => l.name);
 
+  // Contractor (international) crew — Employees tab.
+  const employees = raw.employees.map(e => ({
+    edition: e.Edition_ID,
+    name: (e.Name || '').toString().trim(),
+    nationality: (e.Nationality || '').toString().trim(),
+    contractor: (e.Contractor || '').toString().trim(),
+    sub: (e['Sub-Contractor'] || '').toString().trim()
+  })).filter(e => e.name);
+
+  // Saudi workforce — Saudi_Employees tab.
+  const saudiEmp = raw.saudiEmp.map(e => ({
+    edition: e.Edition_ID,
+    name: (e.Name || '').toString().trim(),
+    gender: (e.Gender || '').toString().trim(),
+    contractor: (e.Contractor || '').toString().trim(),
+    sub: (e['Sub-Contractor'] || '').toString().trim()
+  })).filter(e => e.name);
+
+  // Vendors — Supplier_List tab (the "Contractor" column holds the company name).
+  const suppliers = raw.suppliers.map(s => ({
+    edition: s.Edition_ID,
+    name: (s.Contractor || '').toString().trim(),
+    saudi: (s['Saudi_&_Non_Saudi'] || '').toString().trim(),
+    scope: (s.Scope || '').toString().trim(),
+    team: (s.Team || '').toString().trim()
+  })).filter(s => s.name);
+
   const venues = rawColumn(grids.venueList, 1, true);
   const designCats = rawColumn(grids.legend, 1, true);
   const videoCats = rawColumn(grids.legend, 4, true);
@@ -476,11 +506,12 @@ async function getDataString() {
     editions, artists, curators, awards,
     videos, talks, partners, countries,
     interviews, designs, locations,
+    employees, saudiEmp, suppliers,
     venues, designCats, videoCats,
     generatedAt: new Date().toISOString()
   });
 
-  cachePut('snapshot_v3', snapshot, CACHE_SECONDS);
+  cachePut('snapshot_v4', snapshot, CACHE_SECONDS);
   return snapshot;
 }
 
@@ -546,7 +577,9 @@ async function askAI(question, contextJson, historyJson) {
     'You are the Noor Riyadh festival archive assistant. Answer ONLY from the JSON data provided. ' +
     'Noor Riyadh is an annual light-art festival in Riyadh, Saudi Arabia (editions 2021-2025). ' +
     'The data covers editions/KPIs, artists & artworks, curators, awards, talks, partners, ' +
-    'artist interviews, festival designs/collateral, locations, venues, and artist nationality counts. ' +
+    'artist interviews, festival designs/collateral, locations, venues, artist nationality counts, ' +
+    'the festival workforce (international contractor crew with nationalities, and the Saudi team with gender), ' +
+    'and suppliers/vendors (with scope and Saudi vs non-Saudi origin). ' +
     'This is a multi-turn conversation: use the prior turns to resolve follow-ups and references. ' +
     'For example, if the user asked about artworks in 2025 and then says "list them" or "show them", ' +
     'they mean list/show those 2025 artworks — carry the subject and filters from earlier turns. ' +
@@ -723,11 +756,15 @@ async function compactContext_() {
   const videos = (snap.videos || []).map(v => ({ name: v.name, year: editionYear_(v.edition), type: v.type }));
   const locations = (snap.locations || []).map(l => ({ name: l.name, type: l.type, editions: l.editions }));
   const partners = (snap.partners || []).map(p => ({ year: editionYear_(p.edition), name: p.name, benefit: p.benefit }));
+  const employees = (snap.employees || []).map(e => ({ name: e.name, year: editionYear_(e.edition), nationality: e.nationality, contractor: e.contractor }));
+  const saudiEmp = (snap.saudiEmp || []).map(e => ({ name: e.name, year: editionYear_(e.edition), gender: e.gender, contractor: e.contractor }));
+  const suppliers = (snap.suppliers || []).map(s => ({ name: s.name, year: editionYear_(s.edition), origin: s.saudi, scope: s.scope, team: s.team }));
   return JSON.stringify({
     editions: snap.editions, artists, curators, awards,
     countries: snap.countries,
     talks: snap.talks.map(t => ({ year: editionYear_(t.edition), topic: t.topic, speakers: t.speakers })),
     designs, interviews, videos, locations, partners,
+    employees, saudiEmp, suppliers,
     venues: snap.venues, designCategories: snap.designCats, videoCategories: snap.videoCats
   });
 }

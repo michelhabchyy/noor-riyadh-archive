@@ -290,6 +290,27 @@
   .vchip{font-size:12px;color:var(--text);border:1px solid var(--line);border-radius:999px;
     padding:6px 13px;background:var(--near);transition:.2s}
   .vchip:hover{border-color:var(--gold);color:var(--gold)}
+  /* Insights (workforce & suppliers) */
+  .insrow{display:flex;flex-wrap:wrap;gap:16px;margin:6px 0 30px}
+  .brk{flex:1 1 240px;min-width:220px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:16px 18px 14px}
+  .brk h4{font-family:"Gimbal",sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 13px;font-weight:600}
+  .brkrow{display:flex;align-items:center;gap:11px;margin:8px 0;font-size:12px}
+  .brkrow .bl{flex:0 0 auto;width:104px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brktrack{flex:1;height:7px;border-radius:999px;background:rgba(21,19,31,.06);overflow:hidden}
+  .brkfill{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--violet),var(--indigo))}
+  .brkn{flex:0 0 auto;width:42px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  .brkmore{color:var(--faint);font-size:11px;margin-top:10px;letter-spacing:.04em}
+  .dirbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .dirsearch{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 16px;
+    color:var(--text);font:inherit;font-size:13px;min-width:200px;outline:none;transition:.2s}
+  .dirsearch:focus{border-color:var(--gold)}
+  .pcloud{display:flex;flex-wrap:wrap;gap:8px}
+  .prow{font-size:12.5px;color:var(--text);border:1px solid var(--line);border-radius:999px;
+    padding:6px 13px;background:var(--near);display:inline-flex;gap:7px;align-items:baseline;line-height:1.2}
+  .prow .pm{color:var(--faint);font-size:11px}
+  .dirempty{display:none;color:var(--faint);padding:22px 4px;font-size:12px;letter-spacing:.04em}
   .item .body{padding:13px 14px}
   .item .t{font-family:"Gimbal",sans-serif;font-weight:600;font-size:14px;line-height:1.3;color:var(--white)}
   .item .s{color:var(--muted);font-size:12px;margin-top:4px}
@@ -607,7 +628,7 @@ function openChatRef(key){var it=window.__chatRefs[key];if(!it)return;
   else if(it.asset&&it.asset.thumb){primary={type:'image',embed:it.asset.thumb};}
   openMedia(it.title||'Item',kicker,'',folder?null:primary,folder);
 }
-function tabsHtml(){var tabs=[['artists','Artists & artworks'],['curators','Curators'],['awards','Awards'],['designs','Designs'],['videos','Videos'],['interviews','Interviews'],['talks','Talks'],['partners','Partners'],['locations','Locations'],['countries','Countries']];
+function tabsHtml(){var tabs=[['artists','Artists & artworks'],['curators','Curators'],['awards','Awards'],['designs','Designs'],['videos','Videos'],['interviews','Interviews'],['talks','Talks'],['partners','Partners'],['crew','Crew'],['saudiTeam','Saudi team'],['suppliers','Suppliers'],['locations','Locations'],['countries','Countries']];
   return '<div class="tabs">'+tabs.map(function(t){return '<div class="tab'+(t[0]===GALTAB?' active':'')+'" data-tab="'+t[0]+'" onclick="setTab(\''+t[0]+'\')">'+t[1]+'</div>';}).join('')+'</div>';}
 function setTab(t){GALTAB=t;document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('active',x.getAttribute('data-tab')===t)});drawGallery();}
 /* tile thumbnail: shows real cover if known; else a typed gradient placeholder
@@ -690,6 +711,14 @@ function assetThumb(asset,seed,label,isVideo){
   }
   return thumbHTML({seed:seed,type:isVideo?'image':'image',label:label||'No preview'});
 }
+/* ---- Insights helpers (workforce & suppliers tabs) ---- */
+function scopeLbl(){return EDITION==='all'?('All editions · 2021–'+DATA.editions[DATA.editions.length-1].year):(yr(EDITION)+' edition');}
+function tallyPairs(arr,fn){var m={},order=[];(arr||[]).forEach(function(x){var k=fn(x);if(k==null||k===''||k==='(blank)')return;k=String(k);if(!(k in m)){m[k]=0;order.push(k);}m[k]++;});return order.map(function(k){return [k,m[k]];}).sort(function(a,b){return b[1]-a[1];});}
+function statTiles(tiles){return '<div class="kpis">'+tiles.map(function(t,i){return '<div class="kpi" style="animation-delay:'+(i*60)+'ms"><div class="n">'+t[1]+'</div><div class="l">'+t[0]+'</div><div class="spark"></div></div>';}).join('')+'</div>';}
+function brkBlock(title,pairs,limit){if(!pairs||!pairs.length)return '';limit=limit||8;var max=pairs[0][1];var rows=pairs.slice(0,limit).map(function(p){var w=Math.max(5,Math.round(p[1]/max*100));return '<div class="brkrow"><span class="bl" title="'+esc(p[0])+'">'+p[0]+'</span><span class="brktrack"><span class="brkfill" style="width:'+w+'%"></span></span><span class="brkn">'+p[1]+'</span></div>';}).join('');var more=pairs.length>limit?'<div class="brkmore">+'+(pairs.length-limit)+' more</div>':'';return '<div class="brk"><h4>'+title+'</h4>'+rows+more+'</div>';}
+function dirWrap(title,count,inner){return '<div class="vdir"><div class="dirbar"><div class="vdir-h" style="margin:0">'+title+' · '+count+'</div><input class="dirsearch" oninput="filterDir(this)" placeholder="Search names…" aria-label="Search"></div><div class="pcloud">'+inner+'</div><div class="dirempty">No matches.</div></div>';}
+function filterDir(inp){var wrap=inp.parentNode.parentNode;var cloud=wrap.querySelector('.pcloud');if(!cloud)return;var q=inp.value.trim().toLowerCase();var rows=cloud.children,shown=0;for(var i=0;i<rows.length;i++){var s=rows[i].getAttribute('data-s')||'';var ok=!q||s.indexOf(q)>=0;rows[i].style.display=ok?'':'none';if(ok)shown++;}var em=wrap.querySelector('.dirempty');if(em)em.style.display=shown?'none':'block';}
+function openSupplier(i){var s=byEd(DATA.suppliers||[])[i];if(!s)return;var rows='';rows+='<h4>Edition</h4><p>'+yr(s.edition)+'</p>';if(s.scope)rows+='<h4>Scope of work</h4><p>'+s.scope+'</p>';if(s.saudi)rows+='<h4>Origin</h4><p>'+s.saudi+'</p>';if(s.team)rows+='<h4>Team</h4><p>'+s.team+'</p>';modal('<h3>'+(s.name||'Supplier')+'</h3><div class="kicker">Supplier · '+yr(s.edition)+'</div>'+rows);}
 function drawGallery(){var g=document.getElementById('gal');if(!g)return;var out='';
   if(GALTAB==='artists'){var a=artistsFor();out=a.map(function(x){var as=x.artwork&&(x.artwork.thumb||x.artwork.folderId)?x.artwork:x.portrait;return card(assetThumb(as,x.id,'Artwork',false),x.title||x.name,x.name+(x.nationality?' · '+x.nationality:''),[x.year,x.location].filter(Boolean),"openArtist('"+esc(x.id)+"')");}).join('');}
   else if(GALTAB==='curators'){var c=byEd(DATA.curators);out=c.map(function(x){return card(assetThumb(x.portrait,x.id,'Portrait',false),x.name,x.nationality,[yr(x.edition)],"openCurator('"+esc(x.id)+"')");}).join('');}
@@ -699,6 +728,42 @@ function drawGallery(){var g=document.getElementById('gal');if(!g)return;var out
   else if(GALTAB==='partners'){var p=byEd(DATA.partners);out=p.map(function(x,i){return '<div class="item" style="cursor:pointer" onclick="openPartner('+i+')"><div class="thumb gen" style="--gen:'+genGradient(x.name||'p')+'"><span class="ph" style="font-size:15px;font-weight:600;letter-spacing:.04em;color:rgba(21,19,31,.7)">'+(x.name||'').slice(0,2).toUpperCase()+'</span></div><div class="body"><div class="t">'+x.name+'</div>'+(x.benefit?'<div class="s">'+x.benefit+'</div>':'<div class="s">Partner · '+yr(x.edition)+'</div>')+'</div></div>';}).join('');}
   else if(GALTAB==='designs'){var d=byEd(DATA.designs);out=d.map(function(x,i){var th=assetThumb(x.asset,'dz'+i+(x.name||''),x.type||'Design',false);return '<div class="item" style="cursor:pointer" onclick="openDesign('+i+')">'+th+'<div class="body"><div class="t">'+x.name+'</div><div class="s">'+(x.type||'Design')+'</div><div class="meta"><span class="badge">'+yr(x.edition)+'</span></div></div></div>';}).join('');}
   else if(GALTAB==='interviews'){var iv=byEd(DATA.interviews);out=iv.map(function(x,i){var as=(x.drive&&(x.drive.thumb||x.drive.folderId))?x.drive:null;var th=as?assetThumb(as,'iv'+i+x.name,'Interview',true):'<div class="thumb gen" style="--gen:'+genGradient(x.name||'iv')+'"><span class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:26px;height:26px;opacity:.85"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Interview</span></span></div>';return '<div class="item" style="cursor:pointer" onclick="openInterview('+i+')">'+th+'<div class="body"><div class="t">'+x.name+'</div><div class="s">'+(x.youtube||x.ytLabel?'Video interview':'Interview')+'</div><div class="meta"><span class="badge">'+yr(x.edition)+'</span></div></div></div>';}).join('');}
+  else if(GALTAB==='crew'){
+    var em=byEd(DATA.employees||[]);
+    var byNat=tallyPairs(em,function(x){return x.nationality;});
+    var byCon=tallyPairs(em,function(x){return x.contractor;});
+    var byEdn=tallyPairs(em,function(x){return yr(x.edition);});
+    var tiles=[['Crew members',em.length.toLocaleString()],['Nationalities',byNat.length],['Contractors',byCon.length]];
+    var ins=statTiles(tiles)+'<div class="insrow">'+brkBlock('Top nationalities',byNat,10)+brkBlock('By contractor',byCon,6)+(EDITION==='all'?brkBlock('By edition',byEdn,6):'')+'</div>';
+    var chips=em.map(function(x){return '<span class="prow" data-s="'+esc((x.name+' '+x.nationality+' '+x.contractor).toLowerCase())+'">'+x.name+(x.nationality?' <span class="pm">'+x.nationality+'</span>':'')+'</span>';}).join('');
+    g.innerHTML='<div class="scopebar"><span class="scope">'+scopeLbl()+'</span><div class="edmeta">'+em.length+' contractor crew · international</div></div>'+ins+(em.length?dirWrap('Crew directory',em.length,chips):'<div class="empty">No crew recorded for this edition.</div>');
+    return;}
+  else if(GALTAB==='saudiTeam'){
+    var se=byEd(DATA.saudiEmp||[]);
+    var byG=tallyPairs(se,function(x){return x.gender;});
+    var byCon2=tallyPairs(se,function(x){return x.contractor;});
+    var byEd2=tallyPairs(se,function(x){return yr(x.edition);});
+    var fem=se.filter(function(x){return /^f/i.test(x.gender);}).length;
+    var male=se.filter(function(x){return /^m/i.test(x.gender);}).length;
+    var femPct=se.length?Math.round(fem/se.length*100):0;
+    var tiles2=[['Saudi team',se.length.toLocaleString()],['Women',fem+' · '+femPct+'%'],['Men',male.toLocaleString()],['Contractors',byCon2.length]];
+    var ins2=statTiles(tiles2)+'<div class="insrow">'+brkBlock('Gender',byG,4)+brkBlock('By contractor',byCon2,6)+(EDITION==='all'?brkBlock('By edition',byEd2,6):'')+'</div>';
+    var chips2=se.map(function(x){return '<span class="prow" data-s="'+esc((x.name+' '+x.gender+' '+x.contractor).toLowerCase())+'">'+x.name+(x.gender?' <span class="pm">'+(x.gender.charAt(0).toUpperCase())+'</span>':'')+'</span>';}).join('');
+    g.innerHTML='<div class="scopebar"><span class="scope">'+scopeLbl()+'</span><div class="edmeta">'+se.length+' Saudi team members</div></div>'+ins2+(se.length?dirWrap('Saudi team directory',se.length,chips2):'<div class="empty">No Saudi team recorded for this edition.</div>');
+    return;}
+  else if(GALTAB==='suppliers'){
+    var su=byEd(DATA.suppliers||[]);
+    var bySaudi=tallyPairs(su,function(x){return x.saudi;});
+    var byTeam=tallyPairs(su,function(x){return x.team;});
+    var byEds=tallyPairs(su,function(x){return yr(x.edition);});
+    var byScope=tallyPairs(su,function(x){return x.scope;});
+    var saudiN=su.filter(function(x){return /^saudi$/i.test(x.saudi);}).length;
+    var pct=su.length?Math.round(saudiN/su.length*100):0;
+    var tiles3=[['Suppliers',su.length.toLocaleString()],['Saudi vendors',saudiN+' · '+pct+'%'],['Distinct scopes',byScope.length]];
+    var ins3=statTiles(tiles3)+'<div class="insrow">'+brkBlock('Saudi vs non-Saudi',bySaudi,4)+brkBlock('By team',byTeam,4)+(EDITION==='all'?brkBlock('By edition',byEds,6):'')+'</div>';
+    var cards=su.map(function(x,i){return '<div class="item" style="cursor:pointer" onclick="openSupplier('+i+')"><div class="thumb gen" style="--gen:'+genGradient(x.name||'s')+'"><span class="ph" style="font-size:15px;font-weight:600;letter-spacing:.04em;color:rgba(21,19,31,.7)">'+(x.name||'').slice(0,2).toUpperCase()+'</span></div><div class="body"><div class="t">'+x.name+'</div><div class="s">'+(x.scope||'Supplier')+'</div><div class="meta"><span class="badge">'+(x.saudi||'')+'</span><span class="badge">'+yr(x.edition)+'</span></div></div></div>';}).join('');
+    g.innerHTML='<div class="scopebar"><span class="scope">'+scopeLbl()+'</span><div class="edmeta">'+su.length+' suppliers &amp; vendors</div></div>'+ins3+'<div class="gal" style="margin-top:24px">'+(cards||'<div class="empty">No suppliers recorded for this edition.</div>')+'</div>';
+    [].slice.call(g.querySelectorAll('.item')).forEach(function(el,i){el.style.animationDelay=Math.min(i*22,500)+'ms';});return;}
   else if(GALTAB==='locations'){var lo=locationsForEd();
     out=lo.map(function(x,i){return '<div class="item" style="cursor:pointer" onclick="openLocation('+i+')"><div class="thumb gen" style="--gen:'+genGradient(x.name||'loc')+'"><span class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:26px;height:26px;opacity:.85"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>'+(x.type||'Location')+'</span></span></div><div class="body"><div class="t">'+x.name+'</div><div class="s">'+(x.type||'Location')+'</div></div></div>';}).join('');
     var dirNote=(EDITION==='all'&&DATA.venues&&DATA.venues.length)?'<div class="vdir"><div class="vdir-h">Full venue directory · '+DATA.venues.length+' sites used across all editions</div><div class="vdir-list">'+DATA.venues.map(function(v){return '<span class="vchip">'+v+'</span>';}).join('')+'</div></div>':'';
