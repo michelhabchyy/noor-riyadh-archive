@@ -559,7 +559,47 @@ async function geminiGenerate_(key, payload) {
   return { ok: false, status: last.status, body: last.body };
 }
 
+// Normalize a question so trivial differences (case, spacing, trailing "?")
+// map to the same cache key: "Who curated 2025?" == "who curated 2025".
+function normQ_(q) {
+  return String(q || '').toLowerCase().replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
+}
+// Is this a context-dependent follow-up ("list them", "and 2024", "show those")?
+// Those depend on the earlier turns, so we must NOT serve a cached standalone answer.
+function isFollowUp_(q) {
+  const s = normQ_(q);
+  const w = s.split(' ').filter(Boolean);
+  if (w.length <= 1) return true;
+  if (/^(and|also|then|ok|okay|what about|how about)\b/.test(s)) return true;
+  return w.length <= 5 && /\b(them|those|these|they|it|that|this|his|her|previous|above|same|more|next|other|others)\b/.test(s);
+}
+
+// Public entry: returns a deterministic, cached answer for standalone questions so
+// the SAME question always gives the SAME reply. Follow-ups skip the cache.
 async function askAI(question, contextJson, historyJson) {
+  let history = [];
+  try { history = JSON.parse(historyJson || '[]'); } catch (e) {}
+  const hasHistory = Array.isArray(history) && history.length > 0;
+
+  let cacheKey = null;
+  if (!(hasHistory && isFollowUp_(question))) {
+    // Key on the data version so answers refresh automatically when the sheet changes.
+    let ver = '';
+    try { ver = JSON.parse(await getDataString()).generatedAt || ''; } catch (e) {}
+    cacheKey = 'ans_' + ver + '_' + normQ_(question);
+    const hit = cacheGet(cacheKey);
+    if (hit) return hit;
+  }
+
+  const result = await askAICompute(question, contextJson, historyJson);
+
+  // Cache only genuine answers — never the transient "busy"/error/not-configured replies.
+  const transient = /"answer":"(The AI is briefly busy|AI error|AI is not configured|Sorry —)/.test(result);
+  if (cacheKey && !transient) cachePut(cacheKey, result, CACHE_SECONDS);
+  return result;
+}
+
+async function askAICompute(question, contextJson, historyJson) {
   const key = process.env.GEMINI_API_KEY;
   const akey = process.env.ANTHROPIC_API_KEY;
   if (!key && !akey) {
@@ -607,7 +647,9 @@ async function askAI(question, contextJson, historyJson) {
     const payload = {
       systemInstruction: { parts: [{ text: system }] },
       contents,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: 'application/json' }
+      // temperature 0 = greedy/deterministic decoding, so the SAME question yields
+      // the SAME answer instead of a re-worded one each time.
+      generationConfig: { temperature: 0, topP: 0, maxOutputTokens: 4096, responseMimeType: 'application/json' }
     };
     const r = await geminiGenerate_(key, payload);
     if (!r.ok) {
@@ -633,7 +675,7 @@ async function askAI(question, contextJson, historyJson) {
   const ares = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': akey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1024, system, messages: msgs })
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1024, temperature: 0, system, messages: msgs })
   });
   const abody = await ares.json().catch(() => ({}));
   if (!ares.ok) return JSON.stringify({ answer: 'AI error: ' + ((abody.error && abody.error.message) || 'unknown'), cards: [] });
